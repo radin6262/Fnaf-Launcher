@@ -61,9 +61,9 @@ jobs:
       - name: Build Android APK
         run: |
           if [ "${{ inputs.build_type }}" == "release" ]; then
-            flet build android --release
+            flet build apk --release
           else
-            flet build android
+            flet build apk
           fi
 
       # 8. Locate and upload the generated APK
