@@ -12,11 +12,6 @@ on:
         options:
           - release
           - debug
-      flutter_version:
-        description: 'Flutter version'
-        required: false
-        default: 'stable'
-        type: string
 
 jobs:
   build-android:
@@ -42,8 +37,7 @@ jobs:
       - name: Install Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: ${{ inputs.flutter_version || 'stable' }}
-          channel: 'stable'
+          channel: stable
 
       # 5. Install Python
       - name: Set up Python
