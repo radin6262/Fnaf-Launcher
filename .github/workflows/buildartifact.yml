@@ -49,7 +49,7 @@ jobs:
       - name: Install Flet
         run: |
           pip install --upgrade pip
-          pip install flet[all]
+          pip install flet[all] requests
 
       # 7. Build the Android APK
       - name: Build Android APK
