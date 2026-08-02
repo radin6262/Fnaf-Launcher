@@ -4,6 +4,9 @@ import os
 import subprocess
 import requests
 import zipfile
+import shutil
+import time
+import threading
 from pathlib import Path
 
 class FNAFLauncher:
@@ -14,26 +17,24 @@ class FNAFLauncher:
         self.system = platform.system()
         self.is_android = self.system == "Android"
 
-        # Set directories using Flet's official environment variable for Android
         if self.is_android:
             data_dir = os.getenv("FLET_APP_STORAGE_DATA")
             if data_dir:
                 self.download_dir = Path(data_dir) / "FNAF_Launcher"
             else:
-                # Fallback for safety
                 self.download_dir = Path("/data/data/com.fnaf.launcher/files/FNAF_Launcher")
         else:
             self.download_dir = Path(os.environ.get('APPDATA', '')) / "FNAF_Launcher"
 
         self.download_dir.mkdir(parents=True, exist_ok=True)
 
-        # Replace these with real download URLs
         self.links = {
-            "android": "https://example.com/fnaf1.apk",
-            "windows": "https://example.com/fnaf1.zip"
+            "android": "https://www.dl.farsroid.com/game/Five-Night-at-Freddys-2.0.7(www.Farsroid.com).apk",
+            "windows": "https://abrehamrahi.ir/o/public/sZhIO0o1/"
         }
 
         self.get_local_path()
+        self.download_running = False
 
     def get_local_path(self):
         if self.is_android:
@@ -45,37 +46,66 @@ class FNAFLauncher:
     def check_file_exists(self):
         return self.local_file.exists() and self.local_file.stat().st_size > 0
 
-    def download_game(self, progress_callback=None):
+    def download_game(self, progress_callback=None, status_callback=None):
         url = self.links["android"] if self.is_android else self.links["windows"]
         try:
+            if status_callback:
+                status_callback("Connecting...")
             response = requests.get(url, stream=True)
             response.raise_for_status()
+
             total_size = int(response.headers.get('content-length', 0))
             downloaded = 0
+            start_time = time.time()
             self.download_dir.mkdir(parents=True, exist_ok=True)
+
+            total_mb = total_size / (1024 * 1024) if total_size > 0 else 0
+            if status_callback:
+                if total_mb > 0:
+                    status_callback(f"Downloading: 0.0 MB / {total_mb:.1f} MB (0%)")
+                else:
+                    status_callback("Downloading... (size unknown)")
 
             with open(self.local_file, 'wb') as f:
                 for chunk in response.iter_content(chunk_size=8192):
                     if chunk:
                         f.write(chunk)
                         downloaded += len(chunk)
-                        if total_size > 0 and progress_callback:
-                            progress_callback(downloaded / total_size)
+                        elapsed = time.time() - start_time
+                        speed = downloaded / elapsed / (1024 * 1024) if elapsed > 0 else 0
+
+                        if total_size > 0:
+                            progress = downloaded / total_size
+                            downloaded_mb = downloaded / (1024 * 1024)
+                            status = f"Downloading: {downloaded_mb:.1f} MB / {total_mb:.1f} MB ({progress*100:.1f}%) - {speed:.1f} MB/s"
+                            if progress_callback:
+                                progress_callback(progress)
+                        else:
+                            downloaded_mb = downloaded / (1024 * 1024)
+                            status = f"Downloading: {downloaded_mb:.1f} MB downloaded - {speed:.1f} MB/s"
+                            if progress_callback:
+                                progress_callback(0.5)
+
+                        if status_callback:
+                            status_callback(status)
+
+            if status_callback:
+                status_callback("Download complete!")
             return True
+
         except Exception as e:
+            if status_callback:
+                status_callback(f"Error: {str(e)}")
             print(f"Download error: {e}")
             return False
 
     def install_apk_android(self):
-        """Install APK on Android using the system package installer (Intent)"""
         if not self.is_android:
             return False
         if not self.local_file.exists():
             return False
 
         try:
-            # Use 'am' (Activity Manager) to fire a VIEW intent for the APK
-            # This opens the system installer, and the user taps "Install"
             apk_path = str(self.local_file)
             cmd = [
                 "am", "start",
@@ -88,7 +118,6 @@ class FNAFLauncher:
         except Exception as e:
             print(f"Intent launch error: {e}")
 
-        # Fallback: try 'pm install' (requires system permission, may fail without root)
         try:
             result = subprocess.run(
                 ["pm", "install", "-r", str(self.local_file)],
@@ -135,10 +164,30 @@ class FNAFLauncher:
         return 0
 
     def clear_game(self):
+        deleted = False
         if self.local_file.exists():
-            self.local_file.unlink()
-            return True
-        return False
+            try:
+                self.local_file.unlink()
+                deleted = True
+            except Exception as e:
+                print(f"Error deleting {self.local_file}: {e}")
+
+        if not self.is_android:
+            extract_dir = self.download_dir / "FNAF1"
+            if extract_dir.exists():
+                try:
+                    shutil.rmtree(extract_dir)
+                    deleted = True
+                except Exception as e:
+                    print(f"Error deleting extracted folder: {e}")
+
+        try:
+            if self.download_dir.exists() and not any(self.download_dir.iterdir()):
+                self.download_dir.rmdir()
+        except Exception as e:
+            print(f"Could not remove empty directory: {e}")
+
+        return deleted
 
 
 def main(page: ft.Page):
@@ -157,17 +206,67 @@ def main(page: ft.Page):
     storage_text = ft.Text("", size=12, color=ft.Colors.GREY_500)
     btn_text = ft.Text("Install / Play")
 
-    def on_install_click(e):
-        status_text.value = f"Checking for game on {'Android' if launcher.is_android else 'Windows'}..."
-        status_text.color = ft.Colors.WHITE
-        download_button.disabled = True
-        btn_text.value = "Processing..."
+    def download_thread():
+        """Background thread for downloading."""
+        # These closures will update the UI from the background thread.
+        # page.update() is thread-safe in Flet.
+        def update_progress(p):
+            progress_bar.value = p
+            progress_bar.visible = True
+            page.update()
+
+        def update_status(msg):
+            status_text.value = msg
+            page.update()
+
+        # Show progress bar immediately
+        progress_bar.visible = True
+        progress_bar.value = 0.0
         page.update()
+
+        success = launcher.download_game(
+            progress_callback=update_progress,
+            status_callback=update_status
+        )
+
+        # After download completes, proceed with install/launch
+        if success:
+            status_text.value = "Download complete! Installing/Launching..."
+            status_text.color = ft.Colors.GREEN
+            page.update()
+            result = launcher.install_or_play()
+            if result == "installed":
+                status_text.value = "APK installed successfully!"
+                status_text.color = ft.Colors.GREEN
+                btn_text.value = "Installed"
+            elif result == "launched":
+                status_text.value = "Game launched!"
+                status_text.color = ft.Colors.GREEN
+                btn_text.value = "Launched"
+            else:
+                status_text.value = f"Failed to {'install' if launcher.is_android else 'launch'}."
+                status_text.color = ft.Colors.RED
+                btn_text.value = "Retry"
+        else:
+            status_text.value = "Download failed."
+            status_text.color = ft.Colors.RED
+            btn_text.value = "Retry"
+
+        progress_bar.visible = False
+        download_button.disabled = False
+        update_file_status()
+        page.update()
+        launcher.download_running = False
+
+    def on_install_click(e):
+        if launcher.download_running:
+            return
 
         if launcher.check_file_exists():
             status_text.value = f"Game found. {'Installing...' if launcher.is_android else 'Launching...'}"
             status_text.color = ft.Colors.ORANGE
             page.update()
+            download_button.disabled = True
 
             result = launcher.install_or_play()
             if result == "installed":
@@ -182,47 +281,22 @@ def main(page: ft.Page):
                 status_text.value = f"Failed to {'install' if launcher.is_android else 'launch'} the game."
                 status_text.color = ft.Colors.RED
                 btn_text.value = "Retry"
-        else:
-            status_text.value = "Downloading game... This may take a while."
-            status_text.color = ft.Colors.ORANGE
-            progress_bar.visible = True
-            btn_text.value = "Downloading..."
+            download_button.disabled = False
+            update_file_status()
             page.update()
+            return
 
-            def update_progress(p):
-                progress_bar.value = p
-                status_text.value = f"Downloading: {p*100:.1f}%"
-                page.update()
-
-            success = launcher.download_game(update_progress)
-
-            if success:
-                status_text.value = "Download complete! Installing/Launching..."
-                page.update()
-                result = launcher.install_or_play()
-                if result == "installed":
-                    status_text.value = "APK installed successfully!"
-                    status_text.color = ft.Colors.GREEN
-                    btn_text.value = "Installed"
-                elif result == "launched":
-                    status_text.value = "Game launched!"
-                    status_text.color = ft.Colors.GREEN
-                    btn_text.value = "Launched"
-                else:
-                    status_text.value = f"Failed to {'install' if launcher.is_android else 'launch'}."
-                    status_text.color = ft.Colors.RED
-                    btn_text.value = "Retry"
-            else:
-                status_text.value = "Download failed. Check internet."
-                status_text.color = ft.Colors.RED
-                btn_text.value = "Retry"
-
-            progress_bar.visible = False
-            page.update()
-
-        update_file_status()
-        download_button.disabled = False
+        # Start download
+        status_text.value = "Starting download..."
+        status_text.color = ft.Colors.ORANGE
+        btn_text.value = "Downloading..."
+        download_button.disabled = True
+        progress_bar.visible = True
+        progress_bar.value = 0.0
         page.update()
+
+        launcher.download_running = True
+        threading.Thread(target=download_thread, daemon=True).start()
 
     def update_file_status():
         if launcher.check_file_exists():
@@ -244,8 +318,12 @@ def main(page: ft.Page):
         if launcher.clear_game():
             status_text.value = "Game files cleared"
             status_text.color = ft.Colors.ORANGE
-            update_file_status()
             btn_text.value = "Install / Play"
+            update_file_status()
+            page.update()
+        else:
+            status_text.value = "Nothing to clear"
+            status_text.color = ft.Colors.GREY_400
             page.update()
 
     download_button = ft.ElevatedButton(

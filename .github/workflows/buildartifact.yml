@@ -65,10 +65,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: fnaf-launcher-${{ inputs.build_type }}
-          # Flet places the APK inside build/app/outputs/apk/
-          # For release: build/app/outputs/apk/release/
-          # For debug: build/app/outputs/apk/debug/
-          path: build/app/outputs/apk/*/*.apk
+          path: build/apk/*/*.apk
           if-no-files-found: error   # fail if no APK found
 
       # 9. Optional: List files for debugging
