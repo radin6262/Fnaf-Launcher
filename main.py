@@ -1,4 +1,4 @@
-﻿import flet as ft
+import flet as ft
 import platform
 import os
 import subprocess
