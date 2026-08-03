@@ -1,7 +1,0 @@
-site_name: FletApkInstaller
-
-theme:
-  name: "material"
-
-plugins:
-  - mkdocstrings
