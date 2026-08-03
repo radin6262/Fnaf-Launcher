@@ -59,20 +59,15 @@ jobs:
           python -m pip install --upgrade pip
           pip install flet
 
-
-      # Create extension
-      - name: Create Flet extension
+      - name: Create extension directory
         run: |
-          flet create \
-            --template extension \
-            --project-name flet-apk-installer
+          mkdir flet-apk-installer
+          cd flet-apk-installer
+          flet create --template extension --project-name flet-apk-installer
 
-
-      # Add apk_sideload Flutter plugin
-      - name: Add apk_sideload plugin
+      - name: Install Flutter dependency
         working-directory: flet-apk-installer/src/flutter/flet_apk_installer
         run: |
-          flutter pub get
           flutter pub add apk_sideload
 
 
