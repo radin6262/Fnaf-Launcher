@@ -44,8 +44,6 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
-          flutter-version: "stable"
-
 
       - name: Verify tools
         run: |
