@@ -130,33 +130,13 @@ class FNAFLauncher:
             if self.page:
                 self.page.update()
 
+            self.apk_installer.install()
+
             return True
 
         except Exception as e:
             print(f"APK installer extension error: {e}")
             return False
-
-    def install_apk_with_intent(self):
-        """Alternative method using INSTALL_PACKAGE intent."""
-        if not self.is_android:
-            return False
-        if not self.local_file.exists():
-            return False
-
-        try:
-            apk_path = str(self.local_file.absolute())
-            cmd = [
-                "am", "start",
-                "-a", "android.intent.action.INSTALL_PACKAGE",
-                "-d", f"file://{apk_path}",
-                "-t", "application/vnd.android.package-archive"
-            ]
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
-            return result.returncode == 0
-        except Exception as e:
-            print(f"INSTALL_PACKAGE intent error: {e}")
-            return False
-
     def launch_windows_game(self):
         if not self.local_file.exists():
             return False
@@ -179,8 +159,6 @@ class FNAFLauncher:
         if self.check_file_exists():
             if self.is_android:
                 if self.install_apk_android():
-                    return "installed"
-                elif self.install_apk_with_intent():
                     return "installed"
                 else:
                     return "install_failed"
@@ -232,7 +210,9 @@ def main(page: ft.Page):
 
     launcher = FNAFLauncher()
 
-    launcher.apk_installer = FletApkInstaller()
+    launcher.apk_installer = FletApkInstaller(
+        visible=False
+    )
 
     status_text = ft.Text("Ready", color=ft.Colors.GREY_400)
     progress_bar = ft.ProgressBar(width=400, visible=False, color=ft.Colors.RED)
@@ -410,7 +390,9 @@ def main(page: ft.Page):
                     ),
                     elevation=5,
                     margin=10,
+
                 ),
+                launcher.apk_installer,
                 ft.Container(
                     content=ft.Text(
                         "Unofficial Launcher - Cross Platform | FNAF 1",
