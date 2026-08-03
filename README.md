@@ -123,5 +123,3 @@ This project is licensed under the MIT License.
 ## Disclaimer
 
 This launcher is an unofficial project and is not affiliated with or endorsed by Scott Cawthon or the Five Nights at Freddy's franchise. Users are responsible for ensuring they have the legal right to download and use the game files provided by the configured download source.
-
-You can replace `YOUR_USERNAME` with your GitHub username and add screenshots later if you want a more polished repository page.
