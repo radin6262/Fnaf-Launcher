@@ -18,13 +18,25 @@ class FNAFLauncher:
         self.is_android = self.system == "Android"
 
         if self.is_android:
-            data_dir = os.getenv("FLET_APP_STORAGE_DATA")
-            if data_dir:
-                self.download_dir = Path(data_dir) / "FNAF_Launcher"
+            # Prefer the public Downloads folder
+            public_downloads = Path("/storage/emulated/0/Download")
+            if public_downloads.exists():
+                self.download_dir = public_downloads / "FNAF_Launcher"
             else:
-                self.download_dir = Path("/data/data/com.fnaf.launcher/files/FNAF_Launcher")
+                # Fallback to app-specific external storage
+                external = os.getenv("FLET_APP_STORAGE_EXTERNAL")
+                if external:
+                    self.download_dir = Path(external) / "FNAF_Launcher"
+                else:
+                    # Final fallback to internal app storage
+                    data_dir = os.getenv("FLET_APP_STORAGE_DATA")
+                    if data_dir:
+                        self.download_dir = Path(data_dir) / "FNAF_Launcher"
+                    else:
+                        self.download_dir = Path("/data/local/tmp/FNAF_Launcher")
         else:
-            self.download_dir = Path(os.environ.get('APPDATA', '')) / "FNAF_Launcher"
+            # Windows: use Downloads folder
+            self.download_dir = Path.home() / "Downloads" / "FNAF_Launcher"
 
         self.download_dir.mkdir(parents=True, exist_ok=True)
 
@@ -100,34 +112,60 @@ class FNAFLauncher:
             return False
 
     def install_apk_android(self):
+        """Open the Android package installer."""
+        if not self.is_android or not self.local_file.exists():
+            return False
+
+        apk_path = str(self.local_file.resolve())
+
+        cmd = [
+            "am",
+            "start",
+            "-a",
+            "android.intent.action.INSTALL_PACKAGE",
+            "-d",
+            f"file://{apk_path}",
+            "-t",
+            "application/vnd.android.package-archive",
+        ]
+
+        try:
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+
+            print("Return code:", result.returncode)
+            print("stdout:", result.stdout)
+            print("stderr:", result.stderr)
+
+            return result.returncode == 0
+
+        except Exception as e:
+            print(f"INSTALL_PACKAGE error: {e}")
+            return False
+
+    def install_apk_with_intent(self):
+        """Alternative method using INSTALL_PACKAGE intent."""
         if not self.is_android:
             return False
         if not self.local_file.exists():
             return False
 
         try:
-            apk_path = str(self.local_file)
+            apk_path = str(self.local_file.absolute())
             cmd = [
                 "am", "start",
-                "-a", "android.intent.action.VIEW",
+                "-a", "android.intent.action.INSTALL_PACKAGE",
                 "-d", f"file://{apk_path}",
                 "-t", "application/vnd.android.package-archive"
             ]
-            result = subprocess.run(cmd, capture_output=True, text=True)
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
             return result.returncode == 0
         except Exception as e:
-            print(f"Intent launch error: {e}")
-
-        try:
-            result = subprocess.run(
-                ["pm", "install", "-r", str(self.local_file)],
-                capture_output=True,
-                text=True,
-                timeout=30
-            )
-            return result.returncode == 0
-        except Exception as e:
-            print(f"pm install error: {e}")
+            print(f"INSTALL_PACKAGE intent error: {e}")
             return False
 
     def launch_windows_game(self):
@@ -151,7 +189,12 @@ class FNAFLauncher:
     def install_or_play(self):
         if self.check_file_exists():
             if self.is_android:
-                return "installed" if self.install_apk_android() else "install_failed"
+                if self.install_apk_android():
+                    return "installed"
+                elif self.install_apk_with_intent():
+                    return "installed"
+                else:
+                    return "install_failed"
             else:
                 return "launched" if self.launch_windows_game() else "launch_failed"
         else:
@@ -207,9 +250,6 @@ def main(page: ft.Page):
     btn_text = ft.Text("Install / Play")
 
     def download_thread():
-        """Background thread for downloading."""
-        # These closures will update the UI from the background thread.
-        # page.update() is thread-safe in Flet.
         def update_progress(p):
             progress_bar.value = p
             progress_bar.visible = True
@@ -219,24 +259,19 @@ def main(page: ft.Page):
             status_text.value = msg
             page.update()
 
-        # Show progress bar immediately
         progress_bar.visible = True
         progress_bar.value = 0.0
         page.update()
 
-        success = launcher.download_game(
-            progress_callback=update_progress,
-            status_callback=update_status
-        )
+        success = launcher.download_game(progress_callback=update_progress, status_callback=update_status)
 
-        # After download completes, proceed with install/launch
         if success:
             status_text.value = "Download complete! Installing/Launching..."
             status_text.color = ft.Colors.GREEN
             page.update()
             result = launcher.install_or_play()
             if result == "installed":
-                status_text.value = "APK installed successfully!"
+                status_text.value = "APK installer opened! Tap Install to continue."
                 status_text.color = ft.Colors.GREEN
                 btn_text.value = "Installed"
             elif result == "launched":
@@ -244,7 +279,7 @@ def main(page: ft.Page):
                 status_text.color = ft.Colors.GREEN
                 btn_text.value = "Launched"
             else:
-                status_text.value = f"Failed to {'install' if launcher.is_android else 'launch'}."
+                status_text.value = f"Failed to install. Try opening the APK manually from {launcher.local_file}"
                 status_text.color = ft.Colors.RED
                 btn_text.value = "Retry"
         else:
@@ -270,7 +305,7 @@ def main(page: ft.Page):
 
             result = launcher.install_or_play()
             if result == "installed":
-                status_text.value = "APK installed successfully!"
+                status_text.value = "APK installer opened! Tap Install to continue."
                 status_text.color = ft.Colors.GREEN
                 btn_text.value = "Installed"
             elif result == "launched":
@@ -278,7 +313,7 @@ def main(page: ft.Page):
                 status_text.color = ft.Colors.GREEN
                 btn_text.value = "Launched"
             else:
-                status_text.value = f"Failed to {'install' if launcher.is_android else 'launch'} the game."
+                status_text.value = f"Failed to install. Try opening the APK manually."
                 status_text.color = ft.Colors.RED
                 btn_text.value = "Retry"
             download_button.disabled = False
@@ -286,7 +321,6 @@ def main(page: ft.Page):
             page.update()
             return
 
-        # Start download
         status_text.value = "Starting download..."
         status_text.color = ft.Colors.ORANGE
         btn_text.value = "Downloading..."

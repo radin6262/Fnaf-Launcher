@@ -1,4 +1,4 @@
-name: Build Flet APK Installer Extension
+name: Build Flet APK Installer Extension Template
 
 on:
   workflow_dispatch:
@@ -78,16 +78,15 @@ jobs:
           flutter pub get
 
 
-      # Return root and archive
       - name: Package extension
         run: |
-          cd ..
+          pwd
+          ls -la
+
           zip -r flet-apk-installer.zip flet-apk-installer
 
-
-      # Upload artifact
-      - name: Upload extension artifact
+      - name: Upload extension
         uses: actions/upload-artifact@v4
         with:
-          name: flet-apk-installer-extension
+          name: flet-apk-installer
           path: flet-apk-installer.zip

@@ -1,0 +1,61 @@
+name: Build Flet Extension
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-extension:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Verify Flutter
+        run: |
+          flutter doctor -v
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Flet
+        run: |
+          python -m pip install --upgrade pip
+          pip install flet
+
+      - name: Install Flutter dependencies
+        working-directory: flet-apk-installer/src/flutter/flet_apk_installer
+        run: |
+          flutter pub get
+
+      - name: Analyze extension
+        working-directory: flet-apk-installer/src/flutter/flet_apk_installer
+        run: |
+          flutter analyze
+
+      - name: Zip extension
+        run: |
+          cd flet-apk-installer
+          zip -r ../flet-apk-installer.zip .
+
+      - name: Upload extension
+        uses: actions/upload-artifact@v4
+        with:
+          name: flet-apk-installer
+          path: flet-apk-installer.zip
