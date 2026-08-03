@@ -102,13 +102,13 @@ FNAF-Launcher/
 
 ## Platform Support
 
-| Platform | Status        |
-| -------- | ------------- |
-| Windows  | Supported     |
-| Android  | Supported     |
-| Linux    | Not Tested    |
-| macOS    | Not Tested    |
-| iOS      | Not Supported |
+| Platform | Status          |
+| -------- |-----------------|
+| Windows  | Fully Supported |
+| Android  | Expiremental    |
+| Linux    | Not Tested      |
+| macOS    | Not Tested      |
+| iOS      | Not Supported   |
 
 ## Notes
 
