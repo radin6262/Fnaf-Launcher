@@ -51,7 +51,21 @@ jobs:
           pip install --upgrade pip
           pip install -r requirements.txt
 
-      # 7. Build the Android APK
+      # 6. Install Python dependencies
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      #7. install custom extension
+
+      - name: Install Flet APK Installer extension
+        run: |
+          cd flet-apk-installer
+          pip install -e .
+
+
+      # 8. Build the Android APK
       - name: Build Android APK
         run: |
           if [ "${{ inputs.build_type }}" == "release" ]; then
@@ -60,7 +74,7 @@ jobs:
             flet build apk
           fi
 
-      # 8. Locate and upload the generated APK
+      # 9. Locate and upload the generated APK
       - name: Upload APK as artifact
         uses: actions/upload-artifact@v4
         with:
@@ -68,7 +82,7 @@ jobs:
           path: build/apk/*.apk
           if-no-files-found: error   # fail if no APK found
 
-      # 9. Optional: List files for debugging
+      # 10. Optional: List files for debugging
       - name: List generated files
         if: always()
         run: |

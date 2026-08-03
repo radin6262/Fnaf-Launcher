@@ -7,6 +7,7 @@ import zipfile
 import shutil
 import time
 import threading
+from flet_apk_installer import FletApkInstaller
 from pathlib import Path
 
 class FNAFLauncher:
@@ -112,39 +113,27 @@ class FNAFLauncher:
             return False
 
     def install_apk_android(self):
-        """Open the Android package installer."""
-        if not self.is_android or not self.local_file.exists():
+        """Open Android APK installer using Flutter extension."""
+        if not self.is_android:
             return False
 
-        apk_path = str(self.local_file.resolve())
-
-        cmd = [
-            "am",
-            "start",
-            "-a",
-            "android.intent.action.INSTALL_PACKAGE",
-            "-d",
-            f"file://{apk_path}",
-            "-t",
-            "application/vnd.android.package-archive",
-        ]
+        if not self.local_file.exists():
+            return False
 
         try:
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=10,
-            )
+            if not hasattr(self, "apk_installer"):
+                print("APK installer control not initialized")
+                return False
 
-            print("Return code:", result.returncode)
-            print("stdout:", result.stdout)
-            print("stderr:", result.stderr)
+            self.apk_installer.path = str(self.local_file)
 
-            return result.returncode == 0
+            if self.page:
+                self.page.update()
+
+            return True
 
         except Exception as e:
-            print(f"INSTALL_PACKAGE error: {e}")
+            print(f"APK installer extension error: {e}")
             return False
 
     def install_apk_with_intent(self):
@@ -242,6 +231,8 @@ def main(page: ft.Page):
     page.window.resizable = False
 
     launcher = FNAFLauncher()
+
+    launcher.apk_installer = FletApkInstaller()
 
     status_text = ft.Text("Ready", color=ft.Colors.GREY_400)
     progress_bar = ft.ProgressBar(width=400, visible=False, color=ft.Colors.RED)

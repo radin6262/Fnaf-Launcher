@@ -1,0 +1,14 @@
+README.md
+pyproject.toml
+src/flet_apk_installer/__init__.py
+src/flet_apk_installer/flet_apk_installer.py
+src/flet_apk_installer.egg-info/PKG-INFO
+src/flet_apk_installer.egg-info/SOURCES.txt
+src/flet_apk_installer.egg-info/dependency_links.txt
+src/flet_apk_installer.egg-info/requires.txt
+src/flet_apk_installer.egg-info/top_level.txt
+src/flutter/flet_apk_installer/pubspec.lock
+src/flutter/flet_apk_installer/pubspec.yaml
+src/flutter/flet_apk_installer/lib/flet_apk_installer.dart
+src/flutter/flet_apk_installer/lib/src/extension.dart
+src/flutter/flet_apk_installer/lib/src/flet_apk_installer.dart
