@@ -1,0 +1,100 @@
+name: Build Flet APK Installer Extension
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-extension:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+
+      # Java required by Android Gradle
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+
+      # Android SDK
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+
+      # Install Gradle
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.10
+
+
+      # Python
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+
+      # Flutter
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: "stable"
+
+
+      - name: Verify tools
+        run: |
+          java -version
+          gradle --version
+          flutter --version
+          python --version
+
+
+      # Install Flet
+      - name: Install Flet
+        run: |
+          python -m pip install --upgrade pip
+          pip install flet
+
+
+      # Create extension
+      - name: Create Flet extension
+        run: |
+          flet create \
+            --template extension \
+            --project-name flet-apk-installer
+
+
+      # Add apk_sideload Flutter plugin
+      - name: Add apk_sideload plugin
+        working-directory: flet-apk-installer/src/flutter/flet_apk_installer
+        run: |
+          flutter pub get
+          flutter pub add apk_sideload
+
+
+      # Build/check extension Flutter side
+      - name: Build Flutter extension
+        working-directory: flet-apk-installer/src/flutter/flet_apk_installer
+        run: |
+          flutter pub get
+
+
+      # Return root and archive
+      - name: Package extension
+        run: |
+          cd ..
+          zip -r flet-apk-installer.zip flet-apk-installer
+
+
+      # Upload artifact
+      - name: Upload extension artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: flet-apk-installer-extension
+          path: flet-apk-installer.zip
