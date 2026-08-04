@@ -111,16 +111,20 @@ class FNAFLauncher:
 
         try:
             result = subprocess.run(
-                ["pm", "path", package],
+                ["pm", "list", "packages"],
                 capture_output=True,
                 text=True,
-                timeout=5
+                timeout=10
             )
 
-            installed = "package:" in result.stdout
+            if result.returncode != 0:
+                print("pm command failed")
+                return False
+
+            installed = f"package:{package}" in result.stdout
 
             print("Package check:")
-            print(result.stdout)
+            print("Looking for:", f"package:{package}")
             print("Installed:", installed)
 
             return installed
@@ -282,25 +286,36 @@ def main(page: ft.Page):
     debug_log = []
 
     def apk_debug(e):
-        debug_log.append(f"[DEBUG] {e}")
+        msg = e.get("message", str(e)) if isinstance(e, dict) else str(e)
+
+        debug_log.append(f"[DEBUG] {msg}")
         status_text.value = "\n".join(debug_log[-5:])
         status_text.color = ft.Colors.BLUE_300
-        print(f"[DEBUG] {e}")
+
+        print(f"[DEBUG] {msg}")
         page.update()
 
     def apk_success(e):
-        debug_log.append(f"[SUCCESS] {e}")
+        msg = e.get("message", str(e)) if isinstance(e, dict) else str(e)
+
+        debug_log.append(f"[SUCCESS] {msg}")
         status_text.value = "\n".join(debug_log[-5:])
         status_text.color = ft.Colors.GREEN
+
         btn_text.value = "Installed"
-        print(f"[SUCCESS] {e}")
+
+        print(f"[SUCCESS] {msg}")
         page.update()
 
     def apk_error(e):
-        debug_log.append(f"[ERROR] {e}")
+        msg = e.get("message", str(e)) if isinstance(e, dict) else str(e)
+
+        debug_log.append(f"[ERROR] {msg}")
         status_text.value = "\n".join(debug_log[-5:])
         status_text.color = ft.Colors.RED
-        print(f"[ERROR] {e}")
+
+        print(f"[ERROR] {msg}")
+
         btn_text.value = "Retry"
         page.update()
 
