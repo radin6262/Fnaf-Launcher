@@ -127,6 +127,22 @@ class FNAFLauncher:
             print("Looking for:", f"package:{package}")
             print("Installed:", installed)
 
+            print("stdout:")
+            print(result.stdout)
+
+            print("stderr:")
+            print(result.stderr)
+
+            resu = subprocess.run(
+                ["pm", "path", "com.scottgames.fivenightsatfreddys"],
+                capture_output=True,
+                text=True,
+            )
+
+            print("resu stdout:", repr(result.stdout))
+            print("resu stderr:", repr(result.stderr))
+            print("returncode:", result.returncode)
+
             return installed
 
         except Exception as e:
@@ -187,22 +203,6 @@ class FNAFLauncher:
             result = self.apk_installer.install()
 
             print("Installer result:", result)
-
-            print("stdout:")
-            print(result.stdout)
-
-            print("stderr:")
-            print(result.stderr)
-
-            resu = subprocess.run(
-                ["pm", "path", "com.scottgames.fivenightsatfreddys"],
-                capture_output=True,
-                text=True,
-            )
-
-            print("resu stdout:", repr(result.stdout))
-            print("resu stderr:", repr(result.stderr))
-            print("returncode:", result.returncode)
 
             return True
 
