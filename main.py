@@ -133,16 +133,6 @@ class FNAFLauncher:
             print("stderr:")
             print(result.stderr)
 
-            resu = subprocess.run(
-                ["pm", "path", "com.scottgames.fivenightsatfreddys"],
-                capture_output=True,
-                text=True,
-            )
-
-            print("resu stdout:", repr(resu.stdout))
-            print("resu stderr:", repr(resu.stderr))
-            print("returncode:", resu.returncode)
-
             return installed
 
         except Exception as e:

@@ -14,3 +14,4 @@ package = "com.flet.fnaflauncher"
 [tool.flet.android.permission]
 "android.permission.INTERNET" = true
 "android.permission.REQUEST_INSTALL_PACKAGES" = true
+"android.permission.QUERY_ALL_PACKAGES" = true
