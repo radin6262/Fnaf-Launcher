@@ -204,32 +204,32 @@ def main(page: ft.Page):
     debug_log = []
 
     def apk_debug(e):
-        debug_log.append(f"[DEBUG] {e.data}")
+        debug_log.append(f"[DEBUG] {e}")
 
         status_text.value = "\n".join(debug_log[-5:])
         status_text.color = ft.Colors.BLUE_300
 
-        print(f"[DEBUG] {e.data}")
+        print(f"[DEBUG] {e}")
         page.update()
 
     def apk_success(e):
-        debug_log.append(f"[SUCCESS] {e.data}")
+        debug_log.append(f"[SUCCESS] {e}")
 
         status_text.value = "\n".join(debug_log[-5:])
         status_text.color = ft.Colors.GREEN
 
         btn_text.value = "Installed"
 
-        print(f"[SUCCESS] {e.data}")
+        print(f"[SUCCESS] {e}")
         page.update()
 
     def apk_error(e):
-        debug_log.append(f"[ERROR] {e.data}")
+        debug_log.append(f"[ERROR] {e}")
 
         status_text.value = "\n".join(debug_log[-5:])
         status_text.color = ft.Colors.RED
 
-        print(f"[ERROR] {e.data}")
+        print(f"[ERROR] {e}")
 
         btn_text.value = "Retry"
         page.update()
@@ -406,7 +406,6 @@ def main(page: ft.Page):
                     margin=10,
 
                 ),
-                launcher.apk_installer,
                 ft.Container(
                     content=ft.Text(
                         "Unofficial Launcher - Cross Platform | FNAF 1",
