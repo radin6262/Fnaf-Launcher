@@ -10,6 +10,7 @@ import threading
 from flet_apk_installer import FletApkInstaller
 from pathlib import Path
 
+
 class FNAFLauncher:
     def __init__(self):
         self.page = None
@@ -80,7 +81,7 @@ class FNAFLauncher:
                         if total_size > 0:
                             progress = downloaded / total_size
                             downloaded_mb = downloaded / (1024 * 1024)
-                            status = f"Downloading: {downloaded_mb:.1f} MB / {total_mb:.1f} MB ({progress*100:.1f}%) - {speed:.1f} MB/s"
+                            status = f"Downloading: {downloaded_mb:.1f} MB / {total_mb:.1f} MB ({progress * 100:.1f}%) - {speed:.1f} MB/s"
                             if progress_callback:
                                 progress_callback(progress)
                         else:
@@ -101,6 +102,59 @@ class FNAFLauncher:
                 status_callback(f"Error: {str(e)}")
             print(f"Download error: {e}")
             return False
+
+    def is_game_installed(self):
+        if not self.is_android:
+            return False
+
+        package = "com.scottgames.fivenightsatfreddys"
+
+        try:
+            result = subprocess.run(
+                ["pm", "path", package],
+                capture_output=True,
+                text=True
+            )
+
+            return result.stdout.startswith("package:")
+
+        except Exception as e:
+            print(e)
+            return False
+
+    def launch_android_game(self):
+        if not self.is_android:
+            return False
+
+        package = "com.scottgames.fivenightsatfreddys"
+
+        try:
+            print("Launching:", package)
+
+            result = subprocess.run(
+                [
+                    "monkey",
+                    "-p",
+                    package,
+                    "1"
+                ],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+
+            print(result.stdout)
+            print(result.stderr)
+
+            if "Events injected" in result.stdout:
+                return True
+
+            return False
+
+        except Exception as e:
+            print("Launch error:", e)
+            return False
+
 
     def install_apk_android(self):
         if not self.is_android:
@@ -128,6 +182,7 @@ class FNAFLauncher:
         except Exception as e:
             print("INSTALL ERROR:", e)
             return False
+
     def launch_windows_game(self):
         if not self.local_file.exists():
             return False
@@ -147,16 +202,31 @@ class FNAFLauncher:
             return True
 
     def install_or_play(self):
-        if self.check_file_exists():
-            if self.is_android:
+        if self.is_android:
+            # Check if game is already installed
+            if self.is_game_installed():
+                print("Game found, launching...")
+                if self.launch_android_game():
+                    return "launched"
+                else:
+                    return "launch_failed"
+
+            # Not installed, check if APK is downloaded
+            if self.check_file_exists():
+                print("APK found, installing...")
                 if self.install_apk_android():
                     return "installed"
                 else:
                     return "install_failed"
             else:
-                return "launched" if self.launch_windows_game() else "launch_failed"
+                return "download_needed"
+
         else:
-            return "download_needed"
+            # Windows flow
+            if self.check_file_exists():
+                return "launched" if self.launch_windows_game() else "launch_failed"
+            else:
+                return "download_needed"
 
     def get_storage_info(self):
         if self.download_dir.exists():
@@ -205,32 +275,24 @@ def main(page: ft.Page):
 
     def apk_debug(e):
         debug_log.append(f"[DEBUG] {e}")
-
         status_text.value = "\n".join(debug_log[-5:])
         status_text.color = ft.Colors.BLUE_300
-
         print(f"[DEBUG] {e}")
         page.update()
 
     def apk_success(e):
         debug_log.append(f"[SUCCESS] {e}")
-
         status_text.value = "\n".join(debug_log[-5:])
         status_text.color = ft.Colors.GREEN
-
         btn_text.value = "Installed"
-
         print(f"[SUCCESS] {e}")
         page.update()
 
     def apk_error(e):
         debug_log.append(f"[ERROR] {e}")
-
         status_text.value = "\n".join(debug_log[-5:])
         status_text.color = ft.Colors.RED
-
         print(f"[ERROR] {e}")
-
         btn_text.value = "Retry"
         page.update()
 
@@ -267,6 +329,19 @@ def main(page: ft.Page):
             status_text.color = ft.Colors.GREEN
             page.update()
             result = launcher.install_or_play()
+
+            if result == "installed":
+                status_text.value = "Opening APK installer..."
+                status_text.color = ft.Colors.ORANGE
+                btn_text.value = "Installed"
+            elif result == "launched":
+                status_text.value = "Game launched!"
+                status_text.color = ft.Colors.GREEN
+                btn_text.value = "Launched"
+            else:
+                status_text.value = f"Failed to install. Try opening the APK manually."
+                status_text.color = ft.Colors.RED
+                btn_text.value = "Retry"
         else:
             status_text.value = "Download failed."
             status_text.color = ft.Colors.RED
@@ -280,6 +355,27 @@ def main(page: ft.Page):
 
     def on_install_click(e):
         if launcher.download_running:
+            return
+
+        if launcher.is_android and launcher.is_game_installed():
+            # Game is already installed - just launch it
+            status_text.value = "Game found! Launching..."
+            status_text.color = ft.Colors.GREEN
+            page.update()
+            download_button.disabled = True
+
+            if launcher.launch_android_game():
+                status_text.value = "Game launched!"
+                status_text.color = ft.Colors.GREEN
+                btn_text.value = "Launched"
+            else:
+                status_text.value = "Failed to launch game."
+                status_text.color = ft.Colors.RED
+                btn_text.value = "Retry"
+
+            download_button.disabled = False
+            update_file_status()
+            page.update()
             return
 
         if launcher.check_file_exists():
@@ -318,19 +414,20 @@ def main(page: ft.Page):
         threading.Thread(target=download_thread, daemon=True).start()
 
     def update_file_status():
-        if launcher.check_file_exists():
-            file_status.value = "Game downloaded"
+        if launcher.is_android and launcher.is_game_installed():
+            file_status.value = "Game installed"
             file_status.color = ft.Colors.GREEN
-            if btn_text.value not in ("Installed", "Launched"):
-                btn_text.value = "Install / Play"
+
+        elif launcher.check_file_exists():
+            file_status.value = "APK downloaded"
+            file_status.color = ft.Colors.ORANGE
+
         else:
             file_status.value = "Game not downloaded"
             file_status.color = ft.Colors.RED
-            if btn_text.value in ("Installed", "Launched"):
-                btn_text.value = "Install / Play"
 
         size = launcher.get_storage_info()
-        storage_text.value = f"Storage used: {size / (1024*1024):.1f} MB" if size > 0 else "No files downloaded"
+        storage_text.value = f"Storage used: {size / (1024 * 1024):.1f} MB" if size > 0 else "No files downloaded"
         page.update()
 
     def on_clear_click(e):
@@ -381,11 +478,13 @@ def main(page: ft.Page):
                             ft.Divider(height=10, color=ft.Colors.TRANSPARENT),
                             ft.Row([
                                 ft.Text("Platform:", size=14, color=ft.Colors.GREY_400),
-                                ft.Text(f"{platform.system()}", size=14, color=ft.Colors.WHITE, weight=ft.FontWeight.BOLD),
+                                ft.Text(f"{platform.system()}", size=14, color=ft.Colors.WHITE,
+                                        weight=ft.FontWeight.BOLD),
                             ]),
                             ft.Row([
                                 ft.Text("Variant:", size=14, color=ft.Colors.GREY_400),
-                                ft.Text("Android APK" if launcher.is_android else "Windows ZIP", size=14, color=ft.Colors.WHITE),
+                                ft.Text("Android APK" if launcher.is_android else "Windows ZIP", size=14,
+                                        color=ft.Colors.WHITE),
                             ]),
                             ft.Divider(height=15, color=ft.Colors.TRANSPARENT),
                             ft.Row([
@@ -404,8 +503,8 @@ def main(page: ft.Page):
                     ),
                     elevation=5,
                     margin=10,
-
                 ),
+                launcher.apk_installer,
                 ft.Container(
                     content=ft.Text(
                         "Unofficial Launcher - Cross Platform | FNAF 1",
@@ -420,5 +519,6 @@ def main(page: ft.Page):
     )
 
     update_file_status()
+
 
 ft.app(target=main)
