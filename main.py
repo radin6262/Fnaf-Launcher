@@ -139,9 +139,9 @@ class FNAFLauncher:
                 text=True,
             )
 
-            print("resu stdout:", repr(result.stdout))
-            print("resu stderr:", repr(result.stderr))
-            print("returncode:", result.returncode)
+            print("resu stdout:", repr(resu.stdout))
+            print("resu stderr:", repr(resu.stderr))
+            print("returncode:", resu.returncode)
 
             return installed
 
