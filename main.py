@@ -113,13 +113,20 @@ class FNAFLauncher:
             result = subprocess.run(
                 ["pm", "path", package],
                 capture_output=True,
-                text=True
+                text=True,
+                timeout=5
             )
 
-            return result.stdout.startswith("package:")
+            installed = "package:" in result.stdout
+
+            print("Package check:")
+            print(result.stdout)
+            print("Installed:", installed)
+
+            return installed
 
         except Exception as e:
-            print(e)
+            print("Package check error:", e)
             return False
 
     def launch_android_game(self):
@@ -203,6 +210,7 @@ class FNAFLauncher:
 
     def install_or_play(self):
         if self.is_android:
+            print("IS INSTALLED RESULT:", self.is_game_installed())
             # Check if game is already installed
             if self.is_game_installed():
                 print("Game found, launching...")
