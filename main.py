@@ -19,22 +19,12 @@ class FNAFLauncher:
         self.is_android = self.system == "Android"
 
         if self.is_android:
-            # Prefer the public Downloads folder
-            public_downloads = Path("/storage/emulated/0/Download")
-            if public_downloads.exists():
-                self.download_dir = public_downloads / "FNAF_Launcher"
+            data_dir = os.getenv("FLET_APP_STORAGE_DATA")
+
+            if data_dir:
+                self.download_dir = Path(data_dir) / "FNAF_Launcher"
             else:
-                # Fallback to app-specific external storage
-                external = os.getenv("FLET_APP_STORAGE_EXTERNAL")
-                if external:
-                    self.download_dir = Path(external) / "FNAF_Launcher"
-                else:
-                    # Final fallback to internal app storage
-                    data_dir = os.getenv("FLET_APP_STORAGE_DATA")
-                    if data_dir:
-                        self.download_dir = Path(data_dir) / "FNAF_Launcher"
-                    else:
-                        self.download_dir = Path("/data/local/tmp/FNAF_Launcher")
+                self.download_dir = Path("/data/data/com.flet.fnaflauncher/files/FNAF_Launcher")
         else:
             # Windows: use Downloads folder
             self.download_dir = Path.home() / "Downloads" / "FNAF_Launcher"
@@ -116,18 +106,28 @@ class FNAFLauncher:
         if not self.is_android:
             return False
 
+        print("APK installer started")
+
         if not self.local_file.exists():
+            print("APK missing:", self.local_file)
             return False
 
-        if not hasattr(self, "apk_installer"):
+        try:
+            apk_path = str(self.local_file.resolve())
+
+            print("Installing:", apk_path)
+
+            self.apk_installer.path = apk_path
+
+            result = self.apk_installer.install()
+
+            print("Installer result:", result)
+
+            return True
+
+        except Exception as e:
+            print("INSTALL ERROR:", e)
             return False
-
-        self.apk_installer.path = str(self.local_file.resolve())
-        self.apk_installer.install()
-
-        # Request successfully sent to Flutter.
-        # Flutter will report success/error asynchronously.
-        return True
     def launch_windows_game(self):
         if not self.local_file.exists():
             return False
@@ -208,6 +208,8 @@ def main(page: ft.Page):
 
         status_text.value = "\n".join(debug_log[-5:])
         status_text.color = ft.Colors.BLUE_300
+
+        print(f"[DEBUG] {e.data}")
         page.update()
 
     def apk_success(e):
@@ -217,6 +219,8 @@ def main(page: ft.Page):
         status_text.color = ft.Colors.GREEN
 
         btn_text.value = "Installed"
+
+        print(f"[SUCCESS] {e.data}")
         page.update()
 
     def apk_error(e):
@@ -225,11 +229,12 @@ def main(page: ft.Page):
         status_text.value = "\n".join(debug_log[-5:])
         status_text.color = ft.Colors.RED
 
+        print(f"[ERROR] {e.data}")
+
         btn_text.value = "Retry"
         page.update()
 
     launcher.apk_installer = FletApkInstaller(
-        visible=False,
         on_debug=apk_debug,
         on_success=apk_success,
         on_error=apk_error,
@@ -284,10 +289,10 @@ def main(page: ft.Page):
             download_button.disabled = True
 
             result = launcher.install_or_play()
+
             if result == "installed":
-                status_text.value = "APK installer opened! Tap Install to continue."
-                status_text.color = ft.Colors.GREEN
-                btn_text.value = "Installed"
+                status_text.value = "Opening APK installer..."
+                status_text.color = ft.Colors.ORANGE
             elif result == "launched":
                 status_text.value = "Game launched!"
                 status_text.color = ft.Colors.GREEN

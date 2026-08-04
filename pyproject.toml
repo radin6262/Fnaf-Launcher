@@ -9,7 +9,7 @@ version = "1.0.0"
 description = "A cross-platform launcher for Five Nights at Freddy's"
 
 [tool.flet.android]
-package = "com.fnaf.launcher"
+package = "com.flet.fnaflauncher"
 
 [tool.flet.android.permission]
 "android.permission.INTERNET" = true
