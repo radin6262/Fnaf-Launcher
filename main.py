@@ -188,7 +188,15 @@ class FNAFLauncher:
 
             print("Installer result:", result)
 
+            print("stdout:")
+            print(result.stdout)
+
+            print("stderr:")
+            print(result.stderr)
+
             return True
+
+
 
         except Exception as e:
             print("INSTALL ERROR:", e)

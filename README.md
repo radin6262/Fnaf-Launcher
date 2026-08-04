@@ -102,13 +102,15 @@ FNAF-Launcher/
 
 ## Platform Support
 
-| Platform | Status          |
-| -------- |-----------------|
-| Windows  | Fully Supported |
-| Android  | Expiremental    |
-| Linux    | Not Tested      |
-| macOS    | Not Tested      |
-| iOS      | Not Supported   |
+| Platform | Status                                                       |
+| -------- |--------------------------------------------------------------|
+| Windows  | Unofficially Supported(requires flet-apk-installer disabled) |
+| Android  | Target                                                       |
+| Linux    | Not Tested                                                   |
+| macOS    | Not Tested                                                   |
+| iOS      | Not Supported                                                |
+
+- for windows builds you need to modify source to disable flet-apk-installer. and we will not provide any windows builds
 
 ## Notes
 
