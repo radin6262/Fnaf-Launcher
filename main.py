@@ -113,30 +113,21 @@ class FNAFLauncher:
             return False
 
     def install_apk_android(self):
-        """Open Android APK installer using Flutter extension."""
         if not self.is_android:
             return False
 
         if not self.local_file.exists():
             return False
 
-        try:
-            if not hasattr(self, "apk_installer"):
-                print("APK installer control not initialized")
-                return False
-
-            self.apk_installer.path = str(self.local_file)
-
-            if self.page:
-                self.page.update()
-
-            self.apk_installer.install()
-
-            return True
-
-        except Exception as e:
-            print(f"APK installer extension error: {e}")
+        if not hasattr(self, "apk_installer"):
             return False
+
+        self.apk_installer.path = str(self.local_file.resolve())
+        self.apk_installer.install()
+
+        # Request successfully sent to Flutter.
+        # Flutter will report success/error asynchronously.
+        return True
     def launch_windows_game(self):
         if not self.local_file.exists():
             return False
@@ -210,8 +201,28 @@ def main(page: ft.Page):
 
     launcher = FNAFLauncher()
 
+    def apk_debug(e):
+        status_text.value = f"[DEBUG] {e.data}"
+        status_text.color = ft.Colors.BLUE_300
+        page.update()
+
+    def apk_success(e):
+        status_text.value = "APK installer opened!"
+        status_text.color = ft.Colors.GREEN
+        btn_text.value = "Installed"
+        page.update()
+
+    def apk_error(e):
+        status_text.value = f"APK Error:\n{e.data}"
+        status_text.color = ft.Colors.RED
+        btn_text.value = "Retry"
+        page.update()
+
     launcher.apk_installer = FletApkInstaller(
-        visible=False
+        visible=False,
+        on_debug=apk_debug,
+        on_success=apk_success,
+        on_error=apk_error,
     )
 
     status_text = ft.Text("Ready", color=ft.Colors.GREY_400)
@@ -241,18 +252,6 @@ def main(page: ft.Page):
             status_text.color = ft.Colors.GREEN
             page.update()
             result = launcher.install_or_play()
-            if result == "installed":
-                status_text.value = "APK installer opened! Tap Install to continue."
-                status_text.color = ft.Colors.GREEN
-                btn_text.value = "Installed"
-            elif result == "launched":
-                status_text.value = "Game launched!"
-                status_text.color = ft.Colors.GREEN
-                btn_text.value = "Launched"
-            else:
-                status_text.value = f"Failed to install. Try opening the APK manually from {launcher.local_file}"
-                status_text.color = ft.Colors.RED
-                btn_text.value = "Retry"
         else:
             status_text.value = "Download failed."
             status_text.color = ft.Colors.RED
