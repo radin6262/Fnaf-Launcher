@@ -201,20 +201,30 @@ def main(page: ft.Page):
 
     launcher = FNAFLauncher()
 
+    debug_log = []
+
     def apk_debug(e):
-        status_text.value = f"[DEBUG] {e.data}"
+        debug_log.append(f"[DEBUG] {e.data}")
+
+        status_text.value = "\n".join(debug_log[-5:])
         status_text.color = ft.Colors.BLUE_300
         page.update()
 
     def apk_success(e):
-        status_text.value = "APK installer opened!"
+        debug_log.append(f"[SUCCESS] {e.data}")
+
+        status_text.value = "\n".join(debug_log[-5:])
         status_text.color = ft.Colors.GREEN
+
         btn_text.value = "Installed"
         page.update()
 
     def apk_error(e):
-        status_text.value = f"APK Error:\n{e.data}"
+        debug_log.append(f"[ERROR] {e.data}")
+
+        status_text.value = "\n".join(debug_log[-5:])
         status_text.color = ft.Colors.RED
+
         btn_text.value = "Retry"
         page.update()
 
