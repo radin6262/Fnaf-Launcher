@@ -1,3 +1,4 @@
 requests
 flet>=0.86.5
+certifi
 git+https://github.com/radin6262/flet-apk-installer

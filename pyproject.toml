@@ -8,9 +8,15 @@ name = "fnaflauncher"
 version = "1.0.0"
 description = "A cross-platform launcher for Five Nights at Freddy's"
 
+dependencies = [
+    "flet>=0.86.5",
+    "requests"
+]
+
 [tool.flet.android]
 package = "com.flet.fnaflauncher"
 dependencies = [
+  "flet-apk-installer @ git+https://github.com/radin6262/flet-apk-installer.git",
   "pyjnius"
 ]
 
