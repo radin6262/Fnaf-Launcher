@@ -9,6 +9,7 @@ import time
 import threading
 from flet_apk_installer import FletApkInstaller
 from pathlib import Path
+from jnius import autoclass
 
 
 class FNAFLauncher:
@@ -137,25 +138,28 @@ class FNAFLauncher:
         package = "com.scottgames.fivenightsatfreddys"
 
         try:
-            result = subprocess.run(
-                [
-                    "am",
-                    "start",
-                    "-n",
-                    "com.scottgames.fivenightsatfreddys/.Main"
-                ],
-                capture_output=True,
-                text=True
-            )
+            # Get the current Android Activity
+            activity_host = autoclass(os.environ["MAIN_ACTIVITY_HOST_CLASS_NAME"])
+            activity = activity_host.mActivity
 
-            print("stdout:", result.stdout)
-            print("stderr:", result.stderr)
-            print("returncode:", result.returncode)
+            # Get PackageManager
+            pm = activity.getPackageManager()
 
-            return result.returncode == 0
+            # Get the launch intent for the app
+            intent = pm.getLaunchIntentForPackage(package)
+
+            if intent is None:
+                print(f"{package} is not installed or has no launchable activity.")
+                return False
+
+            # Launch the app
+            activity.startActivity(intent)
+
+            print(f"Launched {package}")
+            return True
 
         except Exception as e:
-            print(e)
+            print("Launch error:", e)
             return False
 
 

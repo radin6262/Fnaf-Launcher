@@ -10,6 +10,9 @@ description = "A cross-platform launcher for Five Nights at Freddy's"
 
 [tool.flet.android]
 package = "com.flet.fnaflauncher"
+dependencies = [
+  "pyjnius"
+]
 
 [tool.flet.android.permission]
 "android.permission.INTERNET" = true
