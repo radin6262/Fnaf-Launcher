@@ -104,7 +104,7 @@ FNAF-Launcher/
 
 | Platform | Status                                                       |
 | -------- |--------------------------------------------------------------|
-| Windows  | Unofficially Supported(requires flet-apk-installer disabled) |
+| Windows  | Seperated Repo                                               |
 | Android  | Target                                                       |
 | Linux    | Not Tested                                                   |
 | macOS    | Not Tested                                                   |
