@@ -127,12 +127,6 @@ class FNAFLauncher:
             print("Looking for:", f"package:{package}")
             print("Installed:", installed)
 
-            print("stdout:")
-            print(result.stdout)
-
-            print("stderr:")
-            print(result.stderr)
-
             return installed
 
         except Exception as e:
@@ -140,36 +134,28 @@ class FNAFLauncher:
             return False
 
     def launch_android_game(self):
-        if not self.is_android:
-            return False
-
         package = "com.scottgames.fivenightsatfreddys"
 
         try:
-            print("Launching:", package)
-
             result = subprocess.run(
                 [
-                    "monkey",
-                    "-p",
-                    package,
-                    "1"
+                    "am",
+                    "start",
+                    "-n",
+                    "com.scottgames.fivenightsatfreddys/.Main"
                 ],
                 capture_output=True,
-                text=True,
-                timeout=10
+                text=True
             )
 
-            print(result.stdout)
-            print(result.stderr)
+            print("stdout:", result.stdout)
+            print("stderr:", result.stderr)
+            print("returncode:", result.returncode)
 
-            if "Events injected" in result.stdout:
-                return True
-
-            return False
+            return result.returncode == 0
 
         except Exception as e:
-            print("Launch error:", e)
+            print(e)
             return False
 
 
