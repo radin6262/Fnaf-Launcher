@@ -162,7 +162,6 @@ class FNAFLauncher:
             print("Launch error:", e)
             return False
 
-
     def install_apk_android(self):
         if not self.is_android:
             return False
@@ -281,26 +280,51 @@ def main(page: ft.Page):
 
     debug_log = []
 
+    # Create spinner
+    spinner = ft.ProgressRing(
+        visible=False,
+        width=30,
+        height=30,
+        stroke_width=3,
+        color=ft.Colors.RED_400,
+    )
+
+    def show_spinner():
+        spinner.visible = True
+        download_button.disabled = True
+        page.update()
+
+    def hide_spinner():
+        spinner.visible = False
+        download_button.disabled = False
+        page.update()
+
     def apk_debug(e):
         msg = e.get("message", str(e)) if isinstance(e, dict) else str(e)
 
         debug_log.append(f"[DEBUG] {msg}")
-        status_text.value = "\n".join(debug_log[-5:])
         status_text.color = ft.Colors.BLUE_300
 
         print(f"[DEBUG] {msg}")
+
+        # Show spinner when installation starts
+        if "Opening" in msg.lower() or "package" in msg.lower():
+            show_spinner()
+
         page.update()
 
     def apk_success(e):
         msg = e.get("message", str(e)) if isinstance(e, dict) else str(e)
 
         debug_log.append(f"[SUCCESS] {msg}")
-        status_text.value = "\n".join(debug_log[-5:])
         status_text.color = ft.Colors.GREEN
 
-        btn_text.value = "Installed"
+        btn_text.value = "Launch"
 
         print(f"[SUCCESS] {msg}")
+
+        # Hide spinner on success
+        hide_spinner()
         page.update()
 
     def apk_error(e):
@@ -313,6 +337,9 @@ def main(page: ft.Page):
         print(f"[ERROR] {msg}")
 
         btn_text.value = "Retry"
+
+        # Hide spinner on error
+        hide_spinner()
         page.update()
 
     launcher.apk_installer = FletApkInstaller(
@@ -403,6 +430,10 @@ def main(page: ft.Page):
             page.update()
             download_button.disabled = True
 
+            # Show spinner for installation
+            if launcher.is_android:
+                show_spinner()
+
             result = launcher.install_or_play()
 
             if result == "installed":
@@ -412,10 +443,12 @@ def main(page: ft.Page):
                 status_text.value = "Game launched!"
                 status_text.color = ft.Colors.GREEN
                 btn_text.value = "Launched"
+                hide_spinner()
             else:
                 status_text.value = f"Failed to install. Try opening the APK manually."
                 status_text.color = ft.Colors.RED
                 btn_text.value = "Retry"
+                hide_spinner()
             download_button.disabled = False
             update_file_status()
             page.update()
@@ -483,7 +516,8 @@ def main(page: ft.Page):
         width=80,
     )
 
-    page.add(
+    # Overlay container with spinner on top
+    main_content = ft.Stack([
         ft.Container(
             content=ft.Column([
                 ft.Row([
@@ -507,7 +541,10 @@ def main(page: ft.Page):
                             ]),
                             ft.Divider(height=15, color=ft.Colors.TRANSPARENT),
                             ft.Row([
-                                download_button,
+                                ft.Row([
+                                    download_button,
+                                    spinner,
+                                ], spacing=10),
                                 ft.Column([file_status, storage_text], spacing=2),
                                 clear_button,
                             ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
@@ -517,6 +554,7 @@ def main(page: ft.Page):
                                 f"Files stored in: {launcher.download_dir}",
                                 size=10, color=ft.Colors.GREY_600, italic=True, selectable=True
                             ),
+                            spinner,  # Spinner added here
                         ]),
                         padding=20,
                     ),
@@ -534,10 +572,39 @@ def main(page: ft.Page):
             ]),
             padding=20,
             expand=True,
-        )
-    )
+        ),
+    ])
+
+    page.add(main_content)
 
     update_file_status()
 
 
+
+    # Test Func
+    # import threading
+
+    # def test():
+    #     """Simulate installation process without hanging UI."""
+    #
+    #     def run_test():
+    #         # This runs in background
+    #         # Schedule UI updates on main thread
+    #         page.run_thread(lambda: apk_debug("Opening Android package manager..."))
+    #
+    #         time.sleep(2)  # Simulate installation
+    #
+    #         # Schedule UI update on main thread
+    #         page.run_thread(lambda: apk_success("install complete"))
+    #
+    #     # Start background thread
+    #     threading.Thread(target=run_test, daemon=True).start()
+    #     # UI remains responsive!
+    #
+    # test()
+
+
+
+
 ft.app(target=main)
+
