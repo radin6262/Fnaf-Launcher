@@ -2,10 +2,14 @@
 name = "fnaflauncher"
 product = "FNAF Launcher"
 description = "A cross-platform launcher for Five Nights at Freddy's"
+assets = [
+    "assets"
+]
+
 
 [project]
 name = "fnaflauncher"
-version = "1.0.0"
+version = "1.1.0"
 description = "A cross-platform launcher for Five Nights at Freddy's"
 
 dependencies = [

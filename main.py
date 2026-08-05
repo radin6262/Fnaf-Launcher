@@ -11,6 +11,49 @@ from flet_apk_installer import FletApkInstaller
 from pathlib import Path
 from jnius import autoclass
 
+# ============================================
+# GAME LIST - Add your games here!
+# ============================================
+GAMES = [
+    {
+        "id": "fnaf1",
+        "name": "Five Nights at Freddy's",
+        "package": "com.scottgames.fivenightsatfreddys",
+        "android_url": "https://www.dl.farsroid.com/game/Five-Night-at-Freddys-2.0.7(www.Farsroid.com).apk",
+        "windows_url": "https://abrehamrahi.ir/o/public/sZhIO0o1/",
+        "icon": "F️",
+        "image": "images/fnaf1.png",
+    },
+    # Add more games here:
+    {
+        "id": "fnaf2",
+        "name": "Five Nights at Freddy's 2",
+        "package": "com.scottgames.fnaf2",
+        "android_url": "https://example.com/fnaf2.apk",
+        "windows_url": "https://example.com/fnaf2.zip",
+        "icon": "F",
+        "image": "images/fnaf2.png",
+    },
+    {
+        "id": "fnaf3",
+        "name": "Five Nights at Freddy's 3",
+        "package": "com.scottgames.fnaf3",
+        "android_url": "https://example.com/fnaf3.apk",
+        "windows_url": "https://example.com/fnaf3.zip",
+        "icon": "F",
+        "image": "images/fnaf3.png",
+    },
+    {
+        "id": "fnaf4",
+        "name": "Five Nights at Freddy's 4",
+        "package": "com.scottgames.fnaf4",
+        "android_url": "https://example.com/fnaf4.apk",
+        "windows_url": "https://example.com/fnaf4.zip",
+        "icon": "F",
+        "image": "images/fnaf4.png",
+    },
+]
+
 
 class FNAFLauncher:
     def __init__(self):
@@ -33,23 +76,32 @@ class FNAFLauncher:
 
         self.download_dir.mkdir(parents=True, exist_ok=True)
 
+        # Use first game as default for backward compatibility
+        self.current_game = GAMES[0] if GAMES else None
+
         self.links = {
-            "android": "https://www.dl.farsroid.com/game/Five-Night-at-Freddys-2.0.7(www.Farsroid.com).apk",
-            "windows": "https://abrehamrahi.ir/o/public/sZhIO0o1/"
+            "android": self.current_game["android_url"] if self.current_game else "",
+            "windows": self.current_game["windows_url"] if self.current_game else ""
         }
 
         self.get_local_path()
         self.download_running = False
 
     def get_local_path(self):
+        """Dynamic file path based on current game ID"""
+        if self.current_game is None:
+            return None
+
+        game_id = self.current_game["id"]
+
         if self.is_android:
-            self.local_file = self.download_dir / "fnaf1.apk"
+            self.local_file = self.download_dir / f"{game_id}.apk"
         else:
-            self.local_file = self.download_dir / "fnaf1.zip"
+            self.local_file = self.download_dir / f"{game_id}.zip"
         return self.local_file
 
     def check_file_exists(self):
-        return self.local_file.exists() and self.local_file.stat().st_size > 0
+        return self.local_file is not None and self.local_file.exists() and self.local_file.stat().st_size > 0
 
     def download_game(self, progress_callback=None, status_callback=None):
         url = self.links["android"] if self.is_android else self.links["windows"]
@@ -105,10 +157,10 @@ class FNAFLauncher:
             return False
 
     def is_game_installed(self):
-        if not self.is_android:
+        if not self.is_android or self.current_game is None:
             return False
 
-        package = "com.scottgames.fivenightsatfreddys"
+        package = self.current_game["package"]
 
         try:
             result = subprocess.run(
@@ -135,7 +187,10 @@ class FNAFLauncher:
             return False
 
     def launch_android_game(self):
-        package = "com.scottgames.fivenightsatfreddys"
+        if self.current_game is None:
+            return False
+
+        package = self.current_game["package"]
 
         try:
             # Get the current Android Activity
@@ -194,11 +249,18 @@ class FNAFLauncher:
             return False
 
         if self.local_file.suffix == '.zip':
-            extract_dir = self.download_dir / "FNAF1"
+            # Use current game ID for extract directory
+            game_id = self.current_game["id"] if self.current_game else "fnaf1"
+            extract_dir = self.download_dir / game_id
             extract_dir.mkdir(exist_ok=True)
-            with zipfile.ZipFile(self.local_file, 'r') as zip_ref:
-                zip_ref.extractall(extract_dir)
+
+            # Only extract if not already extracted
             exe_files = list(extract_dir.rglob("*.exe"))
+            if not exe_files:
+                with zipfile.ZipFile(self.local_file, 'r') as zip_ref:
+                    zip_ref.extractall(extract_dir)
+                exe_files = list(extract_dir.rglob("*.exe"))
+
             if exe_files:
                 subprocess.Popen([str(exe_files[0])], shell=True, cwd=str(extract_dir))
                 return True
@@ -243,15 +305,19 @@ class FNAFLauncher:
 
     def clear_game(self):
         deleted = False
-        if self.local_file.exists():
+
+        # Delete the APK/ZIP file
+        if self.local_file is not None and self.local_file.exists():
             try:
                 self.local_file.unlink()
                 deleted = True
             except Exception as e:
                 print(f"Error deleting {self.local_file}: {e}")
 
-        if not self.is_android:
-            extract_dir = self.download_dir / "FNAF1"
+        # Delete the extracted game folder (Windows)
+        if not self.is_android and self.current_game is not None:
+            game_id = self.current_game["id"]
+            extract_dir = self.download_dir / game_id
             if extract_dir.exists():
                 try:
                     shutil.rmtree(extract_dir)
@@ -259,6 +325,7 @@ class FNAFLauncher:
                 except Exception as e:
                     print(f"Error deleting extracted folder: {e}")
 
+        # If the download directory is empty, remove it
         try:
             if self.download_dir.exists() and not any(self.download_dir.iterdir()):
                 self.download_dir.rmdir()
@@ -268,15 +335,132 @@ class FNAFLauncher:
         return deleted
 
 
+def create_game_card(game, launcher, on_install_click, on_clear_click, download_button, clear_button, spinner,
+                     file_status, storage_text, progress_bar, status_text, update_file_status, page):
+    """Create a styled game card with image and buttons overlay."""
+
+    game_image = ft.Image(
+        src=game["image"],
+        width=300,
+        height=400,
+        fit=ft.BoxFit.COVER,
+    )
+
+    game_name_overlay = ft.Container(
+        content=ft.Text(
+            game["name"],
+            size=20,
+            weight=ft.FontWeight.BOLD,
+            color=ft.Colors.WHITE,
+            text_align=ft.TextAlign.CENTER,
+        ),
+        alignment=ft.Alignment(0, -1),
+        padding=ft.Padding(0, 10, 0, 0),
+        bgcolor=ft.Colors.with_opacity(0.6, ft.Colors.BLACK),
+        width=300,
+        height=50,
+    )
+
+    install_btn = ft.ElevatedButton(
+        content=download_button.content,
+        on_click=on_install_click,
+        width=120,
+        style=ft.ButtonStyle(
+            bgcolor=ft.Colors.with_opacity(0.85, ft.Colors.RED_900),
+            color=ft.Colors.WHITE,
+        ),
+    )
+
+    clear_btn = ft.ElevatedButton(
+        "Clear Files",
+        on_click=on_clear_click,
+        width=120,
+        style=ft.ButtonStyle(
+            bgcolor=ft.Colors.with_opacity(0.75, ft.Colors.GREY_800),
+            color=ft.Colors.WHITE,
+        ),
+    )
+
+    image_stack = ft.Stack(
+        [
+            game_image,
+
+            # # Game title (optional)
+            # ft.Container(
+            #     content=ft.Text(
+            #         game["name"],
+            #         size=18,
+            #         weight=ft.FontWeight.BOLD,
+            #         color=ft.Colors.WHITE,
+            #     ),
+            #     bgcolor=ft.Colors.with_opacity(0.6, ft.Colors.BLACK),
+            #     padding=ft.Padding(8, 5, 8, 5),
+            #     left=0,
+            #     top=0,
+            # ),
+
+            # Buttons bottom-right
+            ft.Container(
+                content=ft.Column(
+                    [
+                        install_btn,
+                        clear_btn,
+                    ],
+                    spacing=5,
+                    horizontal_alignment=ft.CrossAxisAlignment.END,
+                ),
+                right=10,
+                bottom=10,
+            ),
+        ],
+        width=300,
+        height=400,
+    )
+
+    # Status info
+    status_info = ft.Row(
+        [
+            file_status,
+            storage_text,
+        ],
+        alignment=ft.MainAxisAlignment.CENTER,
+        spacing=20,
+    )
+
+    return ft.Card(
+        elevation=8,
+        content=ft.Container(
+            width=page.width - 40,
+            padding=10,
+            bgcolor=ft.Colors.BLACK_87,
+            border_radius=15,
+            content=ft.Column(
+                [
+                    image_stack,
+                    ft.Divider(height=10, color=ft.Colors.TRANSPARENT),
+                    spinner,
+                    status_info,
+                    progress_bar,
+                    status_text,
+                ],
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                spacing=8,
+            ),
+        ),
+    )
+
+
 def main(page: ft.Page):
     page.title = "FNAF Launcher"
     page.theme_mode = ft.ThemeMode.DARK
     page.bgcolor = ft.Colors.BLACK
-    page.window.width = 600
-    page.window.height = 500
-    page.window.resizable = False
 
     launcher = FNAFLauncher()
+
+    if not launcher.is_android:
+        page.window.width = 360
+        page.window.height = 800
+        page.window.resizable = False
 
     debug_log = []
 
@@ -349,10 +533,28 @@ def main(page: ft.Page):
     )
 
     status_text = ft.Text("Ready", color=ft.Colors.GREY_400)
-    progress_bar = ft.ProgressBar(width=400, visible=False, color=ft.Colors.RED)
-    file_status = ft.Text("Checking...", size=14, color=ft.Colors.GREY_400)
+    progress_bar = ft.ProgressBar(width=300, visible=False, color=ft.Colors.RED)
+    file_status = ft.Text("Checking...", size=12, color=ft.Colors.GREY_400)
     storage_text = ft.Text("", size=12, color=ft.Colors.GREY_500)
-    btn_text = ft.Text("Install / Play")
+    btn_text = ft.Text("Install")
+
+    def select_game(game):
+        launcher.current_game = game
+
+        launcher.links = {
+            "android": game["android_url"],
+            "windows": game["windows_url"]
+        }
+
+        launcher.local_file = launcher.get_local_path()
+
+        status_text.value = f"Selected: {game['name']}"
+        status_text.color = ft.Colors.GREEN
+
+        update_file_status()
+        update_button_state()
+        rebuild_main_card()
+        page.update()
 
     def download_thread():
         def update_progress(p):
@@ -467,19 +669,29 @@ def main(page: ft.Page):
 
     def update_file_status():
         if launcher.is_android and launcher.is_game_installed():
-            file_status.value = "Game installed"
+            file_status.value = "Installed"
             file_status.color = ft.Colors.GREEN
 
         elif launcher.check_file_exists():
-            file_status.value = "APK downloaded"
+            file_status.value = "Downloaded"
             file_status.color = ft.Colors.ORANGE
 
         else:
-            file_status.value = "Game not downloaded"
+            file_status.value = "Not downloaded"
             file_status.color = ft.Colors.RED
 
         size = launcher.get_storage_info()
-        storage_text.value = f"Storage used: {size / (1024 * 1024):.1f} MB" if size > 0 else "No files downloaded"
+        storage_text.value = f"{size / (1024 * 1024):.1f} MB" if size > 0 else "None"
+        page.update()
+
+    def update_button_state():
+        if launcher.is_android and launcher.is_game_installed():
+            btn_text.value = "Launch"
+        elif launcher.check_file_exists():
+            btn_text.value = "Install"
+        else:
+            btn_text.value = "Download"
+
         page.update()
 
     def on_clear_click(e):
@@ -488,6 +700,8 @@ def main(page: ft.Page):
             status_text.color = ft.Colors.ORANGE
             btn_text.value = "Install / Play"
             update_file_status()
+            update_button_state()
+            rebuild_main_card()
             page.update()
         else:
             status_text.value = "Nothing to clear"
@@ -516,62 +730,96 @@ def main(page: ft.Page):
         width=80,
     )
 
+    # Create game selection cards
+    game_cards = ft.Column(spacing=10, scroll=ft.ScrollMode.AUTO)
+
+    for game in GAMES:
+        game_card = ft.Card(
+            content=ft.Container(
+                content=ft.Row([
+                    ft.Text(game.get("icon", "🎮"), size=24),
+                    ft.Text(game["name"], size=16, weight=ft.FontWeight.BOLD, expand=True),
+                    ft.ElevatedButton(
+                        "Select",
+                        on_click=lambda e, g=game: select_game(g),
+                        style=ft.ButtonStyle(
+                            bgcolor=ft.Colors.GREY_800,
+                            color=ft.Colors.WHITE,
+                            padding=ft.Padding(10, 5, 10, 5),
+                        ),
+                        width=80,
+                    ),
+                ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
+                padding=ft.Padding(15, 8, 15, 0),
+            ),
+            elevation=2,
+            margin=0,
+        )
+        game_cards.controls.append(game_card)
+
+    # Main card container - will be rebuilt when game changes
+    main_card_container = ft.Container()
+
+    def rebuild_main_card():
+        """Rebuild the main game card with current game data."""
+        if launcher.current_game:
+            main_card_container.content = create_game_card(
+                launcher.current_game,
+                launcher,
+                on_install_click,
+                on_clear_click,
+                download_button,
+                clear_button,
+                spinner,
+                file_status,
+                storage_text,
+                progress_bar,
+                status_text,
+                update_file_status,
+                page,
+            )
+        else:
+            main_card_container.content = ft.Text("No game selected", color=ft.Colors.RED)
+        page.update()
+
+    # Build initial card
+    rebuild_main_card()
+
     # Overlay container with spinner on top
     main_content = ft.Stack([
         ft.Container(
             content=ft.Column([
                 ft.Row([
-                    ft.Text("FNAF Launcher", size=32, weight=ft.FontWeight.BOLD, color=ft.Colors.RED),
+                    ft.Text("Faz Launcher", size=28, weight=ft.FontWeight.BOLD, color=ft.Colors.RED),
                 ], alignment=ft.MainAxisAlignment.CENTER),
-                ft.Divider(height=20, color=ft.Colors.RED_900),
-                ft.Card(
-                    content=ft.Container(
-                        content=ft.Column([
-                            ft.Text("Five Nights at Freddy's", size=22, weight=ft.FontWeight.BOLD),
-                            ft.Divider(height=10, color=ft.Colors.TRANSPARENT),
-                            ft.Row([
-                                ft.Text("Platform:", size=14, color=ft.Colors.GREY_400),
-                                ft.Text(f"{platform.system()}", size=14, color=ft.Colors.WHITE,
-                                        weight=ft.FontWeight.BOLD),
-                            ]),
-                            ft.Row([
-                                ft.Text("Variant:", size=14, color=ft.Colors.GREY_400),
-                                ft.Text("Android APK" if launcher.is_android else "Windows ZIP", size=14,
-                                        color=ft.Colors.WHITE),
-                            ]),
-                            ft.Divider(height=15, color=ft.Colors.TRANSPARENT),
-                            ft.Row([
-                                ft.Row([
-                                    download_button,
-                                    spinner,
-                                ], spacing=10),
-                                ft.Column([file_status, storage_text], spacing=2),
-                                clear_button,
-                            ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
-                            progress_bar,
-                            status_text,
-                            ft.Text(
-                                f"Files stored in: {launcher.download_dir}",
-                                size=10, color=ft.Colors.GREY_600, italic=True, selectable=True
-                            ),
-                            spinner,  # Spinner added here
-                        ]),
-                        padding=20,
-                    ),
-                    elevation=5,
-                    margin=10,
+                ft.Divider(height=10, color=ft.Colors.RED_900),
+
+                # Game selection
+                ft.Text("Select Game:", size=14, weight=ft.FontWeight.BOLD),
+                ft.Container(
+                    content=game_cards,
+                    height=150,
                 ),
+
+                ft.Divider(height=10, color=ft.Colors.RED_900),
+
+                # Current game card
+                main_card_container,
+
                 launcher.apk_installer,
                 ft.Container(
                     content=ft.Text(
-                        "Unofficial Launcher - Cross Platform | FNAF 1",
-                        size=12, color=ft.Colors.GREY_600, italic=True
+                        "Unofficial Launcher - Cross Platform",
+                        size=10, color=ft.Colors.GREY_600, italic=True
                     ),
                     alignment=ft.Alignment(0, 0),
+                    margin=ft.Margin(0, 5, 0, 0),
                 )
-            ]),
-            padding=20,
-            expand=True,
+            ],
+                scroll=ft.ScrollMode.AUTO,
+                expand=True,
+            ),
+            height=page.height if hasattr(page, 'height') else 800,
         ),
     ])
 
@@ -580,31 +828,4 @@ def main(page: ft.Page):
     update_file_status()
 
 
-
-    # Test Func
-    # import threading
-
-    # def test():
-    #     """Simulate installation process without hanging UI."""
-    #
-    #     def run_test():
-    #         # This runs in background
-    #         # Schedule UI updates on main thread
-    #         page.run_thread(lambda: apk_debug("Opening Android package manager..."))
-    #
-    #         time.sleep(2)  # Simulate installation
-    #
-    #         # Schedule UI update on main thread
-    #         page.run_thread(lambda: apk_success("install complete"))
-    #
-    #     # Start background thread
-    #     threading.Thread(target=run_test, daemon=True).start()
-    #     # UI remains responsive!
-    #
-    # test()
-
-
-
-
-ft.app(target=main)
-
+ft.run(main, assets_dir="assets")
