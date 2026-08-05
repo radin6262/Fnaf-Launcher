@@ -1,4 +1,4 @@
-# FNAF Launcher
+# Faz Launcher(Formerly Fnaf Launcher)
 
 A cross-platform launcher for **Five Nights at Freddy's**, built with **Python** and **Flet**.
 

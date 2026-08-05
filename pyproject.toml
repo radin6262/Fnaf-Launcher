@@ -1,6 +1,6 @@
 [tool.flet]
-name = "fnaflauncher"
-product = "FNAF Launcher"
+name = "faz launcher"
+product = "Faz Launcher"
 description = "A cross-platform launcher for Five Nights at Freddy's"
 assets = [
     "assets"
@@ -8,7 +8,7 @@ assets = [
 
 
 [project]
-name = "fnaflauncher"
+name = "fazlauncher"
 version = "1.1.0"
 description = "A cross-platform launcher for Five Nights at Freddy's"
 
@@ -18,7 +18,7 @@ dependencies = [
 ]
 
 [tool.flet.android]
-package = "com.flet.fnaflauncher"
+package = "com.flet.fazlauncher"
 dependencies = [
   "flet-apk-installer @ git+https://github.com/radin6262/flet-apk-installer.git",
   "pyjnius"
